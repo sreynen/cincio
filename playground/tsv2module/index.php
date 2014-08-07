@@ -117,17 +117,15 @@ if ($_POST['input']) {
 ?>
 <?php require_once($_SERVER['DOCUMENT_ROOT'] . '/includes/header.inc'); ?>
   <body>
-    <div class="navbar navbar-default navbar-fixed-top">
+    <div class="navbar navbar-default">
       <div class="container">
         <div class="navbar-header">
           <a href="/" class="navbar-brand">CINC</a>
         </div>
-        <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav ">
             <li><a href="https://www.drupal.org/project/cinc">Drupal Module</a></li>
             <li class="active"><a href="/playground">Playground</a></li>
           </ul>
-        </div>
       </div>
     </div>
     <div class="container">
