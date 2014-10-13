@@ -15,6 +15,7 @@
       <h1>Playground</h1>
       <p>Some configuration tools:</p>
       <div class="list-group">
+        <a href="/playground/sheet2module" class="list-group-item">Sheet2Module : Creates full Drupal configuration modules from Google Sheets input.</a>
         <a href="/playground/tsv2module" class="list-group-item">TSV2Module : Creates Drupal content type configuration modules from TSV input.</a>
       </div>
     </div>
