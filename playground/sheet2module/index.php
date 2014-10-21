@@ -1,5 +1,7 @@
 <?php
 
+define('S2MDEBUG', FALSE);
+
 set_include_path(get_include_path() . PATH_SEPARATOR . $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/');
 require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/Zend/Loader.php';
 
@@ -131,6 +133,12 @@ function sheets_to_content_types($sheets) {
  */
 function sheets_to_fields($sheets) {
 
+  static $type_synonyms = array(
+    'longtext' => 'text_with_summary',
+    'term reference' => 'taxonomy_term_reference',
+    'term ref' => 'taxonomy_term_reference',
+  );
+
   $result = array();
   $columns = array();
   $worksheet = sheets_to_worksheet($sheets, array('fields'));
@@ -155,6 +163,16 @@ function sheets_to_fields($sheets) {
       }
     }
 
+    if (isset($result_row['type']) && !empty($result_row['type'])) {
+
+      $result_row['type'] = strtolower($result_row['type']);
+
+      if (isset($type_synonyms[$result_row['type']])) {
+        $result_row['type'] = $type_synonyms[$result_row['type']];
+      }
+
+    }
+
     if (isset($result_row['machine name']) && !empty($result_row['machine name'])) {
       $result[] = $result_row;
     }
@@ -170,7 +188,49 @@ function sheets_to_fields($sheets) {
  */
 function sheets_to_field_instances($sheets) {
 
-  return FALSE;
+  $result = array();
+  $columns = array();
+  $worksheet = sheets_to_worksheet($sheets, array('node types', 'content types'));
+
+  if (!$worksheet) {
+    return FALSE;
+  }
+
+  $header = array_shift($worksheet);
+
+  foreach ($header as $index => $name) {
+    $columns[strtolower($name)] = $index;
+  }
+
+  $current_type = FALSE;
+
+  foreach ($worksheet as $row) {
+
+    $result_row = array();
+
+    foreach ($columns as $name => $index) {
+      if (isset($row[$index])) {
+        $result_row[$name] = $row[$index];
+      }
+    }
+
+    if (isset($result_row['machine name']) && !empty($result_row['machine name'])) {
+      $current_type = $result_row['machine name'];
+    }
+
+    if (isset($result_row['field machine name']) && !empty($result_row['field machine name'])) {
+
+      if (!isset($result[$current_type])) {
+        $result[$current_type] = array();
+      }
+
+      $result[$current_type][] = $result_row;
+
+    }
+
+  }
+
+  return $result;
 
 }
 
@@ -319,22 +379,27 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
   foreach($worksheet_feed as $worksheet) {
 
     $sheet_title = $worksheet->getTitle() . '';
-    $data_feed = $service->getListFeed($worksheet);
 
     if (!isset($sheets[$sheet_title])) {
       $sheets[$sheet_title] = array();
     }
 
-    foreach ($data_feed as $row) {
+    $cells = $service->getCellFeed($worksheet);
 
-      $row_array = array();
-      $cells = $row->getCustom();
+    foreach ($cells as $cell) {
+      $row = $cell->getCell()->getRow() - 2;
+      $column = $cell->getCell()->getColumn() - 1;
+      $value = $cell->getCell()->getText();
 
-      foreach($cells as $cell) {
-        $row_array[] = $cell->getText() . '';
+      if ($row >= 0) {
+
+        if (!isset($sheets[$sheet_title][$row])) {
+          $sheets[$sheet_title][$row] = array();
+        }
+
+        $sheets[$sheet_title][$row][$column] = $value;
+
       }
-
-      $sheets[$sheet_title][] = $row_array;
 
     }
 
@@ -350,10 +415,14 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
 
   $filename = 'sheet2module.tar';
 
-  header('Content-type: application/x-tar');
-  header('Content-Disposition: attachment; filename="' . $filename . '"');
+  if (!S2MDEBUG) {
 
-  if (FALSE && $_POST['version'] == 'd7') {
+    header('Content-type: application/x-tar');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+  }
+
+  if ($_POST['version'] == '7') {
 
     $info = implode("\n", array(
       'name = Sheet2Module Export',
@@ -398,6 +467,8 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
 
   }
 
+  $field_name_to_type = array();
+
   if ($fields) {
 
     foreach ($fields as $field) {
@@ -410,7 +481,31 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
         "cardinality: " . $field['# values'],
       ));
 
+      $field_name_to_type[$field['machine name']] = $field['type'];
+
       print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', $field_export);
+
+    }
+
+  }
+
+  if ($field_instances) {
+
+    foreach ($field_instances as $node_type => $type_field_instances) {
+
+      foreach ($type_field_instances as $field) {
+
+        $field_export = implode("\n", array(
+          "id: node." . $node_type . '.' . $field['field machine name'],
+          'label: "' . $field['label'],
+          'entity_type: node',
+          'bundle: ' . $node_type,
+          "field_type: " . $field_name_to_type[$field['field machine name']],
+        ));
+
+        print create_tar('sheet2module_export/config/install/field.instance.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
+
+      }
 
     }
 
