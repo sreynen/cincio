@@ -572,6 +572,7 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
           <ul class="nav navbar-nav ">
             <li><a href="https://www.drupal.org/project/cinc">Drupal Module</a></li>
             <li class="active"><a href="/playground">Playground</a></li>
+            <li><a href="/links">Links</a></li>
           </ul>
       </div>
     </div>
