@@ -475,10 +475,11 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
 
       $field_export = implode("\n", array(
         "id: " . $field['entity type'] . '.' . $field['machine name'],
-        'name: ' . $field['machine name'],
+        'field_name: ' . $field['machine name'],
         "entity_type: " . $field['entity type'],
         "type: " . $field['type'],
         "cardinality: " . $field['# values'],
+        "settings: {}",
       ));
 
       $field_name_to_type[$field['machine name']] = $field['type'];
@@ -497,13 +498,15 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
 
         $field_export = implode("\n", array(
           "id: node." . $node_type . '.' . $field['field machine name'],
-          'label: "' . $field['label'],
+          'label: "' . $field['label'] . '"',
           'entity_type: node',
           'bundle: ' . $node_type,
-          "field_type: " . $field_name_to_type[$field['field machine name']],
+          'field_type: ' . $field_name_to_type[$field['field machine name']],
+          'field_name: ' . $field['field machine name'],
+          'settings: {}',
         ));
 
-        print create_tar('sheet2module_export/config/install/field.instance.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
+        print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
 
       }
 
