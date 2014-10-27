@@ -360,6 +360,140 @@ function sheets_to_field_collections($sheets) {
 
 }
 
+/**
+ * Creates tar export of content types.
+ */
+function tar_from_content_types($content_types) {
+
+   foreach ($content_types as $content_type) {
+
+    $type = implode("\n", array(
+      "name: '" . $content_type['name'] . "'",
+      'type: ' . $content_type['machine name'],
+      "description: '" . $content_type['description'] . "'",
+      'create_body: false',
+    ));
+
+    print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', $type);
+
+  }
+
+}
+
+/**
+ * Creates tar export of fields.
+ */
+function tar_from_fields($fields, &$field_name_to_type) {
+
+  foreach ($fields as $field) {
+
+    $field_export = implode("\n", array(
+      "id: " . $field['entity type'] . '.' . $field['machine name'],
+      'field_name: ' . $field['machine name'],
+      "entity_type: " . $field['entity type'],
+      "type: " . $field['type'],
+      "cardinality: " . $field['# values'],
+      "settings: {}",
+    ));
+
+    $field_name_to_type[$field['machine name']] = $field['type'];
+
+    print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', $field_export);
+
+  }
+
+}
+
+/**
+ * Creates tar export of field instances.
+ */
+function tar_from_field_instances($field_instances, $field_name_to_type) {
+
+  foreach ($field_instances as $node_type => $type_field_instances) {
+
+    foreach ($type_field_instances as $field) {
+
+      $field_export_parts = array(
+        "id: node." . $node_type . '.' . $field['field machine name'],
+        'label: "' . $field['label'] . '"',
+        'entity_type: node',
+        'bundle: ' . $node_type,
+        'field_type: ' . $field_name_to_type[$field['field machine name']],
+        'field_name: ' . $field['field machine name'],
+        'settings: {}',
+      );
+
+      if ($_POST['version'] != '7') {
+        $field_export_parts[] = 'dependencies:';
+        $field_export_parts[] = '  entity:';
+        $field_export_parts[] = '    - field.storage.node.' . $field['field machine name'];
+        $field_export_parts[] = '    - node.type.' . $node_type;
+      }
+
+      $field_export = implode("\n", $field_export_parts);
+
+      print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
+
+    }
+
+  }
+
+}
+
+/**
+ * Creates tar export of image styles.
+ */
+function tar_from_image_styles($image_styles) {
+
+  foreach ($image_styles as $image_style) {
+
+    $style = implode("\n", array(
+      "name: '" . $image_style['style name'] . "'",
+    ));
+
+    print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', $style);
+
+  }
+
+}
+
+/**
+ * Creates tar export of vocabs.
+ */
+function tar_from_vocabs($vocabs) {
+
+  foreach ($vocabs as $vocab) {
+
+    $taxonomy_vocab = implode("\n", array(
+      "name: '" . $vocab['name'] . "'",
+      "vid: '" . $vocab['machine name'] . "'",
+      "description: '" . $vocab['description'] . "'"
+    ));
+
+    print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', $taxonomy_vocab);
+
+  }
+
+}
+
+/**
+ * Creates tar export of menus.
+ */
+function tar_from_menus($menus) {
+
+  foreach ($menus as $menu) {
+
+    $menu_export = implode("\n", array(
+      "id: '" . $menu['machine name'] . "'",
+      "label: '" . $menu['label'] . "'",
+    ));
+
+    print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', $menu_export);
+
+  }
+
+}
+
 if (isset($_POST['key']) && !empty($_POST['key'])) {
 
   $user = $_POST['email'];
@@ -452,111 +586,29 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
   }
 
   if ($content_types) {
-
-    foreach ($content_types as $content_type) {
-
-      $type = implode("\n", array(
-        "name: '" . $content_type['name'] . "'",
-        'type: ' . $content_type['machine name'],
-        "description: '" . $content_type['description'] . "'"
-      ));
-
-      print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', $type);
-
-    }
-
+    tar_from_content_types($content_types);
   }
 
   $field_name_to_type = array();
 
   if ($fields) {
-
-    foreach ($fields as $field) {
-
-      $field_export = implode("\n", array(
-        "id: " . $field['entity type'] . '.' . $field['machine name'],
-        'field_name: ' . $field['machine name'],
-        "entity_type: " . $field['entity type'],
-        "type: " . $field['type'],
-        "cardinality: " . $field['# values'],
-        "settings: {}",
-      ));
-
-      $field_name_to_type[$field['machine name']] = $field['type'];
-
-      print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', $field_export);
-
-    }
-
+    tar_from_fields($fields, $field_name_to_type);
   }
 
   if ($field_instances) {
-
-    foreach ($field_instances as $node_type => $type_field_instances) {
-
-      foreach ($type_field_instances as $field) {
-
-        $field_export = implode("\n", array(
-          "id: node." . $node_type . '.' . $field['field machine name'],
-          'label: "' . $field['label'] . '"',
-          'entity_type: node',
-          'bundle: ' . $node_type,
-          'field_type: ' . $field_name_to_type[$field['field machine name']],
-          'field_name: ' . $field['field machine name'],
-          'settings: {}',
-        ));
-
-        print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
-
-      }
-
-    }
-
+    tar_from_field_instances($field_instances, $field_name_to_type);
   }
 
   if ($image_styles) {
-
-    foreach ($image_styles as $image_style) {
-
-      $style = implode("\n", array(
-        "name: '" . $image_style['style name'] . "'",
-      ));
-
-      print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', $style);
-
-    }
-
+    tar_from_image_styles($image_styles);
   }
 
   if ($vocabs) {
-
-    foreach ($vocabs as $vocab) {
-
-      $taxonomy_vocab = implode("\n", array(
-        "name: '" . $vocab['name'] . "'",
-        "vid: '" . $vocab['machine name'] . "'",
-        "description: '" . $vocab['description'] . "'"
-      ));
-
-      print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', $taxonomy_vocab);
-
-    }
-
+    tar_from_vocabs($vocabs);
   }
 
   if ($menus) {
-
-    foreach ($menus as $menu) {
-
-      $menu_export = implode("\n", array(
-        "id: '" . $menu['machine name'] . "'",
-        "label: '" . $menu['label'] . "'",
-      ));
-
-      print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', $menu_export);
-
-    }
-
+    tar_from_menus($menus);
   }
 
   print pack('a1024', '');
