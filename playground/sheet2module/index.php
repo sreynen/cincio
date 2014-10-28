@@ -423,12 +423,10 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
         'settings: {}',
       );
 
-      if ($_POST['version'] != '7') {
-        $field_export_parts[] = 'dependencies:';
-        $field_export_parts[] = '  entity:';
-        $field_export_parts[] = '    - field.storage.node.' . $field['field machine name'];
-        $field_export_parts[] = '    - node.type.' . $node_type;
-      }
+      $field_export_parts[] = 'dependencies:';
+      $field_export_parts[] = '  entity:';
+      $field_export_parts[] = '    - field.storage.node.' . $field['field machine name'];
+      $field_export_parts[] = '    - node.type.' . $node_type;
 
       $field_export = implode("\n", $field_export_parts);
 
