@@ -137,6 +137,14 @@ function sheets_to_fields($sheets) {
     'longtext' => 'text_with_summary',
     'term reference' => 'taxonomy_term_reference',
     'term ref' => 'taxonomy_term_reference',
+    'termreference' => 'taxonomy_term_reference',
+    'entity reference' => 'entityreference',
+    'entity ref' => 'entityreference',
+    'entityreference' => 'entityreference',
+    'link' => 'link_field',
+    'select list' => 'list_text',
+    'list' => 'list_text',
+    'video embed' => 'video_embed_field',
   );
 
   $result = array();
