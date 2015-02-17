@@ -135,6 +135,7 @@ function sheets_to_fields($sheets) {
 
   static $type_synonyms = array(
     'longtext' => 'text_with_summary',
+    'long text' => 'text_with_summary',
     'term reference' => 'taxonomy_term_reference',
     'term ref' => 'taxonomy_term_reference',
     'termreference' => 'taxonomy_term_reference',
@@ -143,8 +144,11 @@ function sheets_to_fields($sheets) {
     'entityreference' => 'entityreference',
     'link' => 'link_field',
     'select list' => 'list_text',
+    'list (text)' => 'list_text',
     'list' => 'list_text',
     'video embed' => 'video_embed_field',
+    'integer' => 'number_integer',
+    'boolean' => 'list_boolean',
   );
 
   $result = array();
