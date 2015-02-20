@@ -566,6 +566,13 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
     $sheets = array();
 
     $service = Zend_Gdata_Spreadsheets::AUTH_SERVICE_NAME;
+    try {
+      $client = Zend_Gdata_ClientLogin::getHttpClient($user, $pass, $service);
+    }
+    catch (Exception $e){
+      exit("Authentication failed");
+    }
+    $service = new Zend_Gdata_Spreadsheets($client);
     $client = Zend_Gdata_ClientLogin::getHttpClient($user, $pass, $service);
     $service = new Zend_Gdata_Spreadsheets($client);
 
