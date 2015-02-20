@@ -1,9 +1,11 @@
 <?php
 
 define('S2MDEBUG', FALSE);
+define('S2MIMPORT', TRUE);
 
 set_include_path(get_include_path() . PATH_SEPARATOR . $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/');
 require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/Zend/Loader.php';
+require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/spyc/Spyc.php';
 
 Zend_Loader::loadClass('Zend_Gdata_Spreadsheets');
 Zend_Loader::loadClass('Zend_Gdata_ClientLogin');
@@ -185,6 +187,17 @@ function sheets_to_fields($sheets) {
 
     }
 
+    if (isset($result_row['field settings'])) {
+
+      try {
+        $result_row['field settings'] = spyc_load($result_row['field settings']);
+      } catch (Exception $e) {
+        unset($result_row['field settings']);
+      }
+
+    }
+
+
     if (isset($result_row['machine name']) && !empty($result_row['machine name'])) {
       $result[] = $result_row;
     }
@@ -230,6 +243,16 @@ function sheets_to_field_instances($sheets) {
       $current_type = $result_row['machine name'];
     }
 
+    if (isset($result_row['field settings'])) {
+
+      try {
+        $result_row['field settings'] = spyc_load($result_row['field settings']);
+      } catch (Exception $e) {
+        unset($result_row['field settings']);
+      }
+
+    }
+
     if (isset($result_row['field machine name']) && !empty($result_row['field machine name'])) {
 
       if (!isset($result[$current_type])) {
@@ -239,6 +262,15 @@ function sheets_to_field_instances($sheets) {
       $result[$current_type][] = $result_row;
 
     }
+
+  }
+
+  if (S2MDEBUG) {
+
+    echo '<pre>';
+    echo '## sheets_to_field_instances ##' . "\n";
+    print_r($result);
+    echo '</pre>';
 
   }
 
@@ -377,16 +409,16 @@ function sheets_to_field_collections($sheets) {
  */
 function tar_from_content_types($content_types) {
 
-   foreach ($content_types as $content_type) {
+  foreach ($content_types as $content_type) {
 
-    $type = implode("\n", array(
-      "name: '" . $content_type['name'] . "'",
-      'type: ' . $content_type['machine name'],
-      "description: '" . $content_type['description'] . "'",
-      'create_body: false',
-    ));
+    $type = array(
+      'name' => $content_type['name'],
+      'type' => $content_type['machine name'],
+      'description' => isset($content_type['description']) ? $content_type['description'] : '',
+      'create_body' => FALSE,
+    );
 
-    print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', $type);
+    print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', spyc_dump($type));
 
   }
 
@@ -397,20 +429,31 @@ function tar_from_content_types($content_types) {
  */
 function tar_from_fields($fields, &$field_name_to_type) {
 
+  if (S2MDEBUG) {
+    echo '<pre>';
+    echo '## tar_from_fields ##' . "\n";
+    print_r($fields);
+    echo '</pre>';
+  }
+
   foreach ($fields as $field) {
 
-    $field_export = implode("\n", array(
-      "id: " . $field['entity type'] . '.' . $field['machine name'],
-      'field_name: ' . $field['machine name'],
-      "entity_type: " . $field['entity type'],
-      "type: " . $field['type'],
-      "cardinality: " . $field['# values'],
-      "settings: {}",
-    ));
+    if (!isset($field['entity type'])) {
+      $field['entity type'] = 'node';
+    }
+
+    $field_export = array(
+      'id' => $field['entity type'] . '.' . $field['machine name'],
+      'field_name' => $field['machine name'],
+      'entity_type' => $field['entity type'],
+      'type' => $field['type'],
+      'cardinality' => $field['# values'],
+      'settings' => isset($field['field settings']) && is_array($field['field settings']) ? $field['field settings'] : array(),
+    );
 
     $field_name_to_type[$field['machine name']] = $field['type'];
 
-    print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', $field_export);
+    print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', spyc_dump($field_export));
 
   }
 
@@ -425,24 +468,27 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
 
     foreach ($type_field_instances as $field) {
 
-      $field_export_parts = array(
-        "id: node." . $node_type . '.' . $field['field machine name'],
-        'label: "' . $field['label'] . '"',
-        'entity_type: node',
-        'bundle: ' . $node_type,
-        'field_type: ' . $field_name_to_type[$field['field machine name']],
-        'field_name: ' . $field['field machine name'],
-        'settings: {}',
-      );
+      if (isset($field_name_to_type[$field['field machine name']])) {
 
-      $field_export_parts[] = 'dependencies:';
-      $field_export_parts[] = '  entity:';
-      $field_export_parts[] = '    - field.storage.node.' . $field['field machine name'];
-      $field_export_parts[] = '    - node.type.' . $node_type;
+        $field_export = array(
+          'id' => 'node.' . $node_type . '.' . $field['field machine name'],
+          'label' => $field['label'],
+          'entity_type' => 'node',
+          'bundle' => $node_type,
+          'field_type' => $field_name_to_type[$field['field machine name']],
+          'field_name' => $field['field machine name'],
+          'settings' => isset($field['field settings']) && is_array($field['field settings']) ? $field['field settings'] : array(),
+          'dependencies' => array(
+            'entity' => array(
+              'field.storage.node.' . $field['field machine name'],
+              'node.type.' . $node_type,
+            ),
+          ),
+        );
 
-      $field_export = implode("\n", $field_export_parts);
+        print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', spyc_dump($field_export));
 
-      print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', $field_export);
+      }
 
     }
 
@@ -457,11 +503,11 @@ function tar_from_image_styles($image_styles) {
 
   foreach ($image_styles as $image_style) {
 
-    $style = implode("\n", array(
-      "name: '" . $image_style['style name'] . "'",
-    ));
+    $style = array(
+      'name' => $image_style['style name'],
+    );
 
-    print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', $style);
+    print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', spyc_dump($style));
 
   }
 
@@ -474,13 +520,13 @@ function tar_from_vocabs($vocabs) {
 
   foreach ($vocabs as $vocab) {
 
-    $taxonomy_vocab = implode("\n", array(
-      "name: '" . $vocab['name'] . "'",
-      "vid: '" . $vocab['machine name'] . "'",
-      "description: '" . $vocab['description'] . "'"
-    ));
+    $taxonomy_vocab = array(
+      'name' => $vocab['name'],
+      'vid' => $vocab['machine name'],
+      'description' => $vocab['description'],
+    );
 
-    print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', $taxonomy_vocab);
+    print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', spyc_dump($taxonomy_vocab));
 
   }
 
@@ -493,12 +539,12 @@ function tar_from_menus($menus) {
 
   foreach ($menus as $menu) {
 
-    $menu_export = implode("\n", array(
-      "id: '" . $menu['machine name'] . "'",
-      "label: '" . $menu['label'] . "'",
-    ));
+    $menu_export = array(
+      'id' => $menu['machine name'],
+      'label' => $menu['label'],
+    );
 
-    print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', $menu_export);
+    print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', spyc_dump($menu_export));
 
   }
 
@@ -510,42 +556,69 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
   $pass = $_POST['pass'];
   $key = $_POST['key'];
 
-  $sheets = array();
+  if (S2MIMPORT && isset($_GET['import'])) {
 
-  $service = Zend_Gdata_Spreadsheets::AUTH_SERVICE_NAME;
-  $client = Zend_Gdata_ClientLogin::getHttpClient($user, $pass, $service);
-  $service = new Zend_Gdata_Spreadsheets($client);
+    $sheets = spyc_load(file_get_contents('./tests/' . $_GET['import']));
 
-  $sheet = $service->getSpreadsheetEntry('https://spreadsheets.google.com/feeds/spreadsheets/' . $key);
+  }
+  else {
 
-  $worksheet_feed = $sheet->getWorksheets();
+    $sheets = array();
 
-  foreach($worksheet_feed as $worksheet) {
+    $service = Zend_Gdata_Spreadsheets::AUTH_SERVICE_NAME;
+    $client = Zend_Gdata_ClientLogin::getHttpClient($user, $pass, $service);
+    $service = new Zend_Gdata_Spreadsheets($client);
 
-    $sheet_title = $worksheet->getTitle() . '';
+    $sheet = $service->getSpreadsheetEntry('https://spreadsheets.google.com/feeds/spreadsheets/' . $key);
 
-    if (!isset($sheets[$sheet_title])) {
-      $sheets[$sheet_title] = array();
-    }
+    $worksheet_feed = $sheet->getWorksheets();
 
-    $cells = $service->getCellFeed($worksheet);
+    foreach($worksheet_feed as $worksheet) {
 
-    foreach ($cells as $cell) {
-      $row = $cell->getCell()->getRow() - 2;
-      $column = $cell->getCell()->getColumn() - 1;
-      $value = $cell->getCell()->getText();
+      $sheet_title = $worksheet->getTitle() . '';
 
-      if ($row >= 0) {
+      if (!isset($sheets[$sheet_title])) {
+        $sheets[$sheet_title] = array();
+      }
 
-        if (!isset($sheets[$sheet_title][$row])) {
-          $sheets[$sheet_title][$row] = array();
+      $cells = $service->getCellFeed($worksheet);
+
+      foreach ($cells as $cell) {
+        $row = $cell->getCell()->getRow() - 2;
+        $column = $cell->getCell()->getColumn() - 1;
+        $value = $cell->getCell()->getText();
+
+        if ($row >= 0) {
+
+          if (!isset($sheets[$sheet_title][$row])) {
+            $sheets[$sheet_title][$row] = array();
+          }
+
+          $sheets[$sheet_title][$row][$column] = $value;
+
         }
-
-        $sheets[$sheet_title][$row][$column] = $value;
 
       }
 
     }
+
+  }
+
+  if (isset($_GET['export'])) {
+
+    print spyc_dump($sheets);
+    die();
+
+  }
+
+  if (S2MDEBUG) {
+
+/*
+    echo '<pre>';
+    echo '## $sheets ##' . "\n";
+    print_r($sheets);
+    echo '</pre>';
+*/
 
   }
 
@@ -644,7 +717,7 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
     <div class="container">
       <h1>Sheet2Module</h1>
       <p>This tool takes a Google Sheet and auto-generates a Drupal module with the full configuration. The Google Sheet is identified by key in the URL. Copy <a href="https://docs.google.com/spreadsheet/ccc?key=0Ak5zX7FSC8XFdG1TcC1nNmE1cm8tQmJ5SXRyVkNOWWc">the public template</a> to start your own Google Sheet. <strong>Note:</strong> This is still a work in progress and the template will likely change.</p>
-      <form class="form-horizontal" role="form" action="/playground/sheet2module/" method="post">
+      <form class="form-horizontal" role="form" action="/playground/sheet2module/<?php if (isset($_GET['export'])) { print '?export=1'; } ?><?php if (isset($_GET['import'])) { print '?import=' . urlencode($_GET['import']); } ?>" method="post">
         <div class="form-group">
           <label class="col-sm-3 control-label">Google Account Email</label>
           <div class="col-sm-6">
