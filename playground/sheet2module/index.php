@@ -573,8 +573,6 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
       exit("Authentication failed");
     }
     $service = new Zend_Gdata_Spreadsheets($client);
-    $client = Zend_Gdata_ClientLogin::getHttpClient($user, $pass, $service);
-    $service = new Zend_Gdata_Spreadsheets($client);
 
     $sheet = $service->getSpreadsheetEntry('https://spreadsheets.google.com/feeds/spreadsheets/' . $key);
 
