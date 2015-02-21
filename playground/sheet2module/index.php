@@ -418,7 +418,7 @@ function tar_from_content_types($content_types) {
       'create_body' => FALSE,
     );
 
-    print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', spyc_dump($type));
+    print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', Spyc::YAMLDump($type, false, 0, true));
 
   }
 
@@ -453,7 +453,7 @@ function tar_from_fields($fields, &$field_name_to_type) {
 
     $field_name_to_type[$field['machine name']] = $field['type'];
 
-    print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', spyc_dump($field_export));
+    print create_tar('sheet2module_export/config/install/field.storage.' . $field['entity type'] . '.' . $field['machine name'] . '.yml', Spyc::YAMLDump($field_export, false, 0, true));
 
   }
 
@@ -486,7 +486,7 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
           ),
         );
 
-        print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', spyc_dump($field_export));
+        print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', Spyc::YAMLDump($field_export, false, 0, true));
 
       }
 
@@ -507,7 +507,7 @@ function tar_from_image_styles($image_styles) {
       'name' => $image_style['style name'],
     );
 
-    print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', spyc_dump($style));
+    print create_tar('sheet2module_export/config/install/image.style.' . $image_style['style name'] . '.yml', Spyc::YAMLDump($style, false, 0, true));
 
   }
 
@@ -526,7 +526,7 @@ function tar_from_vocabs($vocabs) {
       'description' => $vocab['description'],
     );
 
-    print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', spyc_dump($taxonomy_vocab));
+    print create_tar('sheet2module_export/config/install/taxonomy.vocabulary.' . $vocab['machine name'] . '.yml', Spyc::YAMLDump($taxonomy_vocab, false, 0, true));
 
   }
 
@@ -544,7 +544,7 @@ function tar_from_menus($menus) {
       'label' => $menu['label'],
     );
 
-    print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', spyc_dump($menu_export));
+    print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', Spyc::YAMLDump($menu_export, false, 0, true));
 
   }
 
