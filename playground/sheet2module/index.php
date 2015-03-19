@@ -1,7 +1,7 @@
 <?php
 
 define('S2MDEBUG', FALSE);
-define('S2MIMPORT', TRUE);
+define('S2MIMPORT', FALSE);
 
 set_include_path(get_include_path() . PATH_SEPARATOR . $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/');
 require_once $_SERVER['DOCUMENT_ROOT'] . '/includes/zendframework1/library/Zend/Loader.php';
@@ -198,6 +198,14 @@ function sheets_to_fields($sheets) {
 
     }
 
+    if (isset($result_row['# values'])) {
+      if (strtolower($result_row['# values']) == 'unlimited') {
+        $result_row['# values'] = -1;
+      }
+    }
+    else {
+      $result_row['# values'] = 1;
+    }
 
     if (isset($result_row['machine name']) && !empty($result_row['machine name'])) {
       $result[] = $result_row;
@@ -254,6 +262,23 @@ function sheets_to_field_instances($sheets) {
 
     }
 
+    if (isset($result_row['widget settings'])) {
+
+      try {
+        $result_row['widget settings'] = spyc_load($result_row['widget settings']);
+      } catch (Exception $e) {
+        unset($result_row['field settings']);
+      }
+
+    }
+
+    if (isset($result_row['required']) && in_array($result_row['required'], array('y', 'Y', 'Yes', 1))) {
+      $result_row['required'] = 1;
+    }
+    else {
+      $result_row['required'] = 0;
+    }
+
     if (isset($result_row['field machine name']) && !empty($result_row['field machine name'])) {
 
       if (!isset($result[$current_type])) {
@@ -270,6 +295,75 @@ function sheets_to_field_instances($sheets) {
 
     echo '<pre>';
     echo '## sheets_to_field_instances ##' . "\n";
+    print_r($result);
+    echo '</pre>';
+
+  }
+
+  return $result;
+
+}
+
+/**
+ * Creates array of field group info from sheets.
+ */
+function sheets_to_field_groups($sheets) {
+
+  $result = array();
+  $columns = array();
+  $worksheet = sheets_to_worksheet($sheets, array('field groups'));
+
+  if (!$worksheet) {
+    return FALSE;
+  }
+
+  $header = array_shift($worksheet);
+
+  foreach ($header as $index => $name) {
+    $columns[strtolower($name)] = $index;
+  }
+
+  $current_type = FALSE;
+
+  foreach ($worksheet as $row) {
+
+    $result_row = array();
+
+    foreach ($columns as $name => $index) {
+      if (isset($row[$index])) {
+        $result_row[$name] = $row[$index];
+      }
+    }
+
+    if (isset($result_row['group settings'])) {
+
+      try {
+        $result_row['group settings'] = spyc_load($result_row['group settings']);
+      } catch (Exception $e) {
+        $result_row['group settings'] = array();
+      }
+
+    }
+    else {
+      $result_row['group settings'] = array();
+    }
+
+    if (isset($result_row['label'])) {
+      $result_row['group settings']['label'] = $result_row['label'];
+    }
+
+    if (isset($result_row['required']) && in_array($result_row['required'], array('y','Y','Yes','1'))) {
+      $result_row['required'] = 1;
+    }
+
+    $result[] = $result_row;
+
+  }
+
+  if (S2MDEBUG) {
+
+    echo '<pre>';
+    echo '## sheets_to_field_groups ##' . "\n";
     print_r($result);
     echo '</pre>';
 
@@ -417,6 +511,7 @@ function tar_from_content_types($content_types) {
       'type' => $content_type['machine name'],
       'description' => isset($content_type['description']) ? $content_type['description'] : '',
       'create_body' => FALSE,
+      'pathauto' => isset($content_type['pathauto']) ? $content_type['pathauto'] : '',
     );
 
     print create_tar('sheet2module_export/config/install/node.type.' . $content_type['machine name'] . '.yml', Spyc::YAMLDump($type, false, 0, true));
@@ -467,7 +562,7 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
 
   foreach ($field_instances as $node_type => $type_field_instances) {
 
-    foreach ($type_field_instances as $field) {
+    foreach ($type_field_instances as $index => $field) {
 
       if (isset($field_name_to_type[$field['field machine name']])) {
 
@@ -475,10 +570,14 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
           'id' => 'node.' . $node_type . '.' . $field['field machine name'],
           'label' => $field['label'],
           'entity_type' => 'node',
+          'required' => $field['required'],
           'bundle' => $node_type,
           'field_type' => $field_name_to_type[$field['field machine name']],
           'field_name' => $field['field machine name'],
           'settings' => isset($field['field settings']) && is_array($field['field settings']) ? $field['field settings'] : array(),
+          'widget' => array(
+            'weight' => ($index + 1),
+          ),
           'dependencies' => array(
             'entity' => array(
               'field.storage.node.' . $field['field machine name'],
@@ -487,11 +586,67 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
           ),
         );
 
+        $field_export['widget'] += isset($field['widget settings']) && is_array($field['widget settings']) ? $field['widget settings'] : array();
+
         print create_tar('sheet2module_export/config/install/field.field.node.' . $node_type . '.' . $field['field machine name'] . '.yml', Spyc::YAMLDump($field_export, false, 0, true));
 
       }
 
     }
+
+  }
+
+}
+
+/**
+ * Creates tar export of field groups.
+ */
+function tar_from_field_groups($field_groups, $field_instances) {
+
+  foreach ($field_groups as $field_group) {
+
+    $children = array();
+    $entity_type = 'node';
+    $mode = 'form';
+    $weight = 0;
+
+    foreach ($field_instances as $node_type => $type_field_instances) {
+
+      foreach ($type_field_instances as $index => $field) {
+
+        if ($field['field group'] == $field_group['machine name']) {
+          if (count($children) == 0) {
+            $bundle = $node_type;
+            $weight = $index + 1;
+          }
+
+          $children[] = $field['field machine name'];
+        }
+
+      }
+
+    }
+
+    $identifier = implode('|', array($field_group['machine name'], $entity_type, $bundle, $mode));
+
+    $group_export = array(
+      'identifier' => $identifier,
+      'group_name' => $field_group['machine name'],
+      'entity_type' => $entity_type,
+      'bundle' => $bundle,
+      'mode' => $mode,
+      'parent_name' => '',
+      'table' => 'field_group',
+			'type' => 'Normal',
+			'disabled' => false,
+			'label' => $field_group['label'],
+      'weight' => $weight,
+      'children' => $children,
+      'format_type' => 'fieldset',
+      'format_settings' => array() + $field_group['group settings'],
+    );
+
+    print create_tar('sheet2module_export/config/install/field_group.' . $identifier . '.yml', Spyc::YAMLDump($group_export, false, 0, true));
 
   }
 
@@ -631,6 +786,7 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
   $content_types = sheets_to_content_types($sheets);
   $fields = sheets_to_fields($sheets);
   $field_instances = sheets_to_field_instances($sheets);
+  $field_groups = sheets_to_field_groups($sheets);
   $image_styles = sheets_to_image_styles($sheets);
   $menus = sheets_to_menus($sheets);
   $vocabs = sheets_to_vocabs($sheets);
@@ -686,6 +842,10 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
 
   if ($field_instances) {
     tar_from_field_instances($field_instances, $field_name_to_type);
+  }
+
+  if ($field_groups) {
+    tar_from_field_groups($field_groups, $field_instances);
   }
 
   if ($image_styles) {
