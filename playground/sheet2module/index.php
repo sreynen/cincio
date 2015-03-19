@@ -147,6 +147,7 @@ function sheets_to_fields($sheets) {
     'link' => 'link_field',
     'select list' => 'list_text',
     'list (text)' => 'list_text',
+    'list (integer)' => 'list_integer',
     'list' => 'list_text',
     'video embed' => 'video_embed_field',
     'integer' => 'number_integer',
