@@ -574,6 +574,7 @@ function tar_from_field_instances($field_instances, $field_name_to_type) {
           'bundle' => $node_type,
           'field_type' => $field_name_to_type[$field['field machine name']],
           'field_name' => $field['field machine name'],
+          'description' => isset($field['help text']) ? $field['help text'] : '',
           'settings' => isset($field['field settings']) && is_array($field['field settings']) ? $field['field settings'] : array(),
           'widget' => array(
             'weight' => ($index + 1),
