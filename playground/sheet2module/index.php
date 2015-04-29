@@ -458,7 +458,7 @@ function sheets_to_vocabs($sheets) {
 
   $result = array();
   $columns = array();
-  $worksheet = sheets_to_worksheet($sheets, array('vocabs', 'vocabularies'));
+  $worksheet = sheets_to_worksheet($sheets, array('vocabs', 'vocabularies', 'taxonomies'));
 
   if (!$worksheet) {
     return FALSE;
@@ -679,7 +679,7 @@ function tar_from_vocabs($vocabs) {
 
     $taxonomy_vocab = array(
       'name' => $vocab['name'],
-      'vid' => $vocab['machine name'],
+      'machine_name' => $vocab['machine name'],
       'description' => $vocab['description'],
     );
 
@@ -698,7 +698,7 @@ function tar_from_menus($menus) {
 
     $menu_export = array(
       'id' => $menu['machine name'],
-      'label' => $menu['label'],
+      'title' => $menu['title'],
     );
 
     print create_tar('sheet2module_export/config/install/system.menu.' . $menu['machine name'] . '.yml', Spyc::YAMLDump($menu_export, false, 0, true));
@@ -883,7 +883,7 @@ if (isset($_POST['key']) && !empty($_POST['key'])) {
     </div>
     <div class="container">
       <h1>Sheet2Module</h1>
-      <p>This tool takes a Google Sheet and auto-generates a Drupal module with the full configuration. The Google Sheet is identified by key in the URL. Copy <a href="https://docs.google.com/spreadsheet/ccc?key=0Ak5zX7FSC8XFdG1TcC1nNmE1cm8tQmJ5SXRyVkNOWWc">the public template</a> to start your own Google Sheet. <strong>Note:</strong> This is still a work in progress and the template will likely change.</p>
+      <p>This tool takes a Google Sheet and auto-generates a Drupal module with the full configuration. The Google Sheet is identified by key in the URL. <a href="https://github.com/sreynen/Drupal-Configuration-Spreadsheet-Standard">Read more about the spreadsheet standard</a>, including a sample you can copy to start your own Google Sheet.</p>
       <form class="form-horizontal" role="form" action="/playground/sheet2module/<?php if (isset($_GET['export'])) { print '?export=1'; } ?><?php if (isset($_GET['import'])) { print '?import=' . urlencode($_GET['import']); } ?>" method="post">
         <div class="form-group">
           <label class="col-sm-3 control-label">Google Account Email</label>
